@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: karinderyako-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false          # Set this manually in Render dashboard
+      - key: FRONTEND_URL
+        sync: false          # Set to your Vercel URL after deployment
+    healthCheckPath: /health
