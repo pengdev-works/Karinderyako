@@ -1,157 +1,244 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import * as api from '../api';
 
-export default function AdminDashboard({ auditLogs, pendingApplications, karinderyas, onApproveApplication, onRejectApplication }) {
+export default function AdminDashboard() {
+  const [restaurants, setRestaurants] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [reports, setReports] = useState(null);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('RESTAURANTS'); // RESTAURANTS | USERS | LOGS
+
+  const loadAdminData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [rList, uList, rep, logs] = await Promise.all([
+        api.fetchAdminRestaurants(),
+        api.fetchAdminUsers(),
+        api.fetchAdminReports(),
+        api.fetchAuditLogs(),
+      ]);
+
+      setRestaurants(rList);
+      setUsers(uList);
+      setReports(rep);
+      setAuditLogs(logs);
+    } catch (err) {
+      console.error('Error loading admin portal:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAdminData();
+  }, [loadAdminData]);
+
+  const handleUpdateStatus = async (restaurantId, appStatus) => {
+    try {
+      const updated = await api.updateAdminRestaurantStatus(restaurantId, appStatus);
+      setRestaurants((prev) => prev.map((r) => (r.id === restaurantId ? updated : r)));
+      alert(`✅ Business #${restaurantId} status updated to ${appStatus}`);
+    } catch (err) {
+      alert(`❌ Update failed: ${err.message}`);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-16 text-center">
+        <div className="w-12 h-12 rounded-full border-4 border-[#C1440E] border-t-transparent animate-spin mx-auto mb-4"></div>
+        <p className="font-bold text-[#5C3A21]">Loading Admin Control Panel...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="dashboard-wrap">
-      <div className="container">
-        {/* Header */}
-        <div className="dashboard-header">
-          <div className="dashboard-header-left">
-            <div className="dashboard-title">
-              <i className="fas fa-shield-alt" style={{ color: 'var(--primary)', marginRight: '0.5rem' }}></i>
-              Admin Control Panel
-            </div>
-            <div className="dashboard-subtitle">
-              Manage vendor/rider approvals, active listings, and security audit logs
-            </div>
-          </div>
-          <span className="dashboard-badge info">
-            <i className="fas fa-map-marker-alt"></i> Poblacion, Laang, Abra
-          </span>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      
+      {/* Header & Metrics */}
+      <div className="space-y-4">
+        <div>
+          <h1 className="font-display font-extrabold text-3xl text-[#5C3A21]">
+            Platform Admin Control Panel
+          </h1>
+          <p className="text-xs sm:text-sm text-[#4A3B2C]/80 font-medium">
+            Manage food business approvals, registered users, and platform activity in Poblacion, Laang, Abra
+          </p>
         </div>
 
-        {/* Stats */}
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-label">Pending Approvals</div>
-            <div className="stat-value warning">{pendingApplications.length}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Active Karinderyas</div>
-            <div className="stat-value success">{karinderyas.length}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Security Events</div>
-            <div className="stat-value">{auditLogs.length}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Platform Status</div>
-            <div className="stat-value success" style={{ fontSize: '1.2rem' }}>ACTIVE</div>
-          </div>
-        </div>
-
-        {/* Pending Applications */}
-        <div className="section-header">
-          <div>
-            <h2 className="section-title">Pending Applications</h2>
-            <p className="section-subtitle">Review and approve new vendor and rider registrations</p>
-          </div>
-        </div>
-
-        {pendingApplications.length === 0 ? (
-          <div className="empty-state" style={{ padding: '2.5rem' }}>
-            <div className="empty-state-icon"><i className="fas fa-inbox"></i></div>
-            <h3>No Pending Applications</h3>
-            <p>All applications have been reviewed. New submissions will appear here.</p>
-          </div>
-        ) : (
-          <div style={{ marginBottom: '2rem' }}>
-            {pendingApplications.map((app) => (
-              <div className="app-card" key={app.id}>
-                <div className="app-info">
-                  <h4>
-                    {app.name}
-                    <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', background: 'var(--warning-light)', color: '#92400E', padding: '0.1rem 0.5rem', borderRadius: '999px', fontWeight: 700 }}>
-                      {app.roleType}
-                    </span>
-                  </h4>
-                  <p>
-                    <i className="fas fa-map-marker-alt" style={{ marginRight: 4, color: 'var(--accent)' }}></i>
-                    {app.address}
-                    {app.ownerName && ` — Owner: ${app.ownerName}`}
-                    {app.description && ` — ${app.description}`}
-                  </p>
-                </div>
-                <div className="app-actions">
-                  <button className="btn btn-success btn-sm" onClick={() => onApproveApplication(app.id)}>
-                    <i className="fas fa-check"></i> Approve
-                  </button>
-                  <button className="btn btn-danger btn-sm" onClick={() => onRejectApplication && onRejectApplication(app.id)}>
-                    <i className="fas fa-times"></i> Reject
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Active Karinderyas */}
-        {karinderyas.length > 0 && (
-          <>
-            <div className="section-header">
-              <div>
-                <h2 className="section-title">Active Karinderyas</h2>
-                <p className="section-subtitle">All approved and listed businesses</p>
-              </div>
+        {/* Metrics Cards */}
+        {reports && (
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div className="bg-[#F7F1E3] rounded-3xl p-5 border border-[#E8D9B5] shadow-sm">
+              <div className="text-xs font-mono font-bold text-[#4A3B2C]/70">Approved Businesses</div>
+              <div className="font-display font-extrabold text-2xl text-[#C1440E] mt-1">{reports.approvedStores}</div>
             </div>
-            <div className="table-wrap" style={{ marginBottom: '2rem' }}>
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Business Name</th>
-                    <th>Category</th>
-                    <th>Owner</th>
-                    <th>Address</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {karinderyas.map((k) => (
-                    <tr key={k.id}>
-                      <td><strong>{k.name}</strong></td>
-                      <td><span className="card-category">{k.category}</span></td>
-                      <td>{k.ownerName}</td>
-                      <td style={{ fontSize: '0.82rem', color: 'var(--gray-500)' }}>{k.address}</td>
-                      <td>
-                        <span className="status-badge open" style={{ position: 'static' }}>Active</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+
+            <div className="bg-[#F7F1E3] rounded-3xl p-5 border border-[#E8D9B5] shadow-sm">
+              <div className="text-xs font-mono font-bold text-[#4A3B2C]/70">Registered Users</div>
+              <div className="font-display font-extrabold text-2xl text-[#5C3A21] mt-1">{reports.totalUsers}</div>
             </div>
-          </>
-        )}
 
-        {/* Security Audit Log */}
-        <div className="section-header">
-          <div>
-            <h2 className="section-title">
-              <i className="fas fa-shield-alt" style={{ color: 'var(--success)', marginRight: '0.5rem' }}></i>
-              Security Audit Log
-            </h2>
-            <p className="section-subtitle">OWASP-compliant event log — all platform actions recorded</p>
-          </div>
-        </div>
+            <div className="bg-[#F7F1E3] rounded-3xl p-5 border border-[#E8D9B5] shadow-sm">
+              <div className="text-xs font-mono font-bold text-[#4A3B2C]/70">Total Platform Orders</div>
+              <div className="font-display font-extrabold text-2xl text-[#4B6043] mt-1">{reports.totalOrders}</div>
+            </div>
 
-        {auditLogs.length === 0 ? (
-          <div style={{ background: 'var(--white)', borderRadius: 'var(--radius-md)', padding: '1.5rem', color: 'var(--gray-500)', border: '1px solid var(--gray-200)' }}>
-            No security events recorded yet.
-          </div>
-        ) : (
-          <div className="audit-log">
-            {auditLogs.map((log) => (
-              <div className="audit-log-item" key={log.id}>
-                <div className={`log-dot ${log.status === 'SUCCESS' ? 'success' : log.status === 'BLOCKED' ? 'blocked' : 'pending'}`}></div>
-                <div className="log-time">{log.timestamp}</div>
-                <div className="log-action">{log.action}</div>
-                <div className="log-details">{log.details}</div>
-                <span className={`log-status ${log.status}`}>{log.status}</span>
-              </div>
-            ))}
+            <div className="bg-[#F7F1E3] rounded-3xl p-5 border border-[#E8D9B5] shadow-sm">
+              <div className="text-xs font-mono font-bold text-[#4A3B2C]/70">Gross Platform Volume</div>
+              <div className="font-display font-extrabold text-2xl text-[#C1440E] mt-1">₱{reports.grossRevenue.toFixed(0)}</div>
+            </div>
           </div>
         )}
       </div>
+
+      {/* Tabs */}
+      <div className="flex items-center gap-2 border-b border-[#E8D9B5] pb-1">
+        <button
+          onClick={() => setActiveTab('RESTAURANTS')}
+          className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all ${
+            activeTab === 'RESTAURANTS' ? 'bg-[#C1440E] text-[#F7F1E3]' : 'bg-[#E8D9B5]/40 text-[#2B2118]'
+          }`}
+        >
+          Food Businesses ({restaurants.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('USERS')}
+          className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all ${
+            activeTab === 'USERS' ? 'bg-[#C1440E] text-[#F7F1E3]' : 'bg-[#E8D9B5]/40 text-[#2B2118]'
+          }`}
+        >
+          Platform Users ({users.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('LOGS')}
+          className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all ${
+            activeTab === 'LOGS' ? 'bg-[#C1440E] text-[#F7F1E3]' : 'bg-[#E8D9B5]/40 text-[#2B2118]'
+          }`}
+        >
+          Audit Logs ({auditLogs.length})
+        </button>
+      </div>
+
+      {/* TAB 1: RESTAURANTS APPROVAL */}
+      {activeTab === 'RESTAURANTS' && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {restaurants.map((r) => (
+              <div
+                key={r.id}
+                className="bg-[#F7F1E3] rounded-3xl p-5 border border-[#E8D9B5] shadow-md space-y-4 flex flex-col justify-between"
+              >
+                <div className="flex items-start gap-4">
+                  <img
+                    src={r.logo || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=200&q=80'}
+                    alt={r.name}
+                    className="w-14 h-14 rounded-2xl object-cover border border-[#E8D9B5]"
+                  />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-extrabold text-lg text-[#5C3A21]">{r.name}</h3>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase ${
+                        r.app_status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {r.app_status}
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#4A3B2C]/80">
+                      Owner: {r.owner_name} • Category: {r.category}
+                    </p>
+                    <p className="text-xs text-[#4A3B2C]/70 truncate">{r.address}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-3 border-t border-[#E8D9B5] text-xs font-bold">
+                  {r.app_status !== 'APPROVED' && (
+                    <button
+                      onClick={() => handleUpdateStatus(r.id, 'APPROVED')}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl"
+                    >
+                      Approve Store
+                    </button>
+                  )}
+
+                  {r.app_status !== 'REJECTED' && (
+                    <button
+                      onClick={() => handleUpdateStatus(r.id, 'REJECTED')}
+                      className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-xl"
+                    >
+                      Reject Application
+                    </button>
+                  )}
+
+                  {r.app_status === 'APPROVED' && (
+                    <button
+                      onClick={() => handleUpdateStatus(r.id, 'SUSPENDED')}
+                      className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-xl"
+                    >
+                      Suspend Store
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: USERS DIRECTORY */}
+      {activeTab === 'USERS' && (
+        <div className="bg-[#F7F1E3] rounded-3xl p-6 border border-[#E8D9B5] shadow-md overflow-x-auto">
+          <table className="w-full text-left text-xs sm:text-sm">
+            <thead className="border-b border-[#E8D9B5] font-mono uppercase text-[#C1440E]">
+              <tr>
+                <th className="py-2">ID</th>
+                <th className="py-2">Name</th>
+                <th className="py-2">Email</th>
+                <th className="py-2">Role</th>
+                <th className="py-2">Phone</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#E8D9B5]/40 font-medium">
+              {users.map((u) => (
+                <tr key={u.id}>
+                  <td className="py-3 font-mono font-bold">#{u.id}</td>
+                  <td className="py-3 font-bold text-[#5C3A21]">{u.name}</td>
+                  <td className="py-3 text-[#4A3B2C]">{u.email}</td>
+                  <td className="py-3">
+                    <span className="bg-[#E8D9B5] text-[#5C3A21] px-2 py-0.5 rounded font-mono font-bold text-[10px]">
+                      {u.role}
+                    </span>
+                  </td>
+                  <td className="py-3 text-[#4A3B2C]">{u.phone || 'N/A'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* TAB 3: AUDIT LOGS */}
+      {activeTab === 'LOGS' && (
+        <div className="bg-[#F7F1E3] rounded-3xl p-6 border border-[#E8D9B5] shadow-md space-y-3">
+          <h3 className="font-display font-bold text-lg text-[#5C3A21]">Audit Logs</h3>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {auditLogs.map((log) => (
+              <div key={log.id} className="p-3 bg-[#E8D9B5]/30 rounded-2xl text-xs font-mono border border-[#E8D9B5] flex justify-between">
+                <div>
+                  <span className="font-bold text-[#C1440E]">{log.action}:</span> {log.details}
+                </div>
+                <div className="text-[10px] opacity-60">
+                  {new Date(log.created_at).toLocaleTimeString()}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

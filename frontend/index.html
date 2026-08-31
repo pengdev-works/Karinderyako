@@ -1,16 +1,50 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="bg-[#F7F1E3] text-[#2B2118] antialiased">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>KarinderyaKo — Online Food Marketplace | Poblacion, Laang, Abra</title>
-    <meta name="description" content="Localized multi-vendor online food ordering and delivery marketplace for home-based karinderyas in Poblacion, Laang, Abra." />
+    <title>KarinderyaKo — Poblacion's Home Kitchens | Online Ordering</title>
+    <meta name="description" content="Localized multi-vendor online food ordering marketplace for home-based karinderyas in Poblacion, Laang, Abra." />
     
+    <!-- Google Fonts: Bricolage Grotesque (Display), Figtree (Body), IBM Plex Mono (Prices/Receipts) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <!-- Tailwind CSS Script & Custom Karinderya Theme -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              atsuete: '#C1440E',
+              'atsuete-dark': '#A03408',
+              palayok: '#5C3A21',
+              'palayok-dark': '#3D2514',
+              'banana-leaf': '#4B6043',
+              'banana-leaf-light': '#EBF2EA',
+              kanin: '#F7F1E3',
+              banig: '#E8D9B5',
+              'banig-dark': '#D4C299',
+              uling: '#2B2118',
+              'uling-light': '#4A3B2C',
+            },
+            fontFamily: {
+              display: ['"Bricolage Grotesque"', 'Fraunces', 'serif'],
+              body: ['Figtree', 'Inter', 'sans-serif'],
+              mono: ['"IBM Plex Mono"', 'monospace'],
+            }
+          }
+        }
+      }
+    </script>
   </head>
-  <body>
+  <body class="bg-[#F7F1E3] text-[#2B2118] font-body min-h-screen selection:bg-[#C1440E] selection:text-[#F7F1E3]">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

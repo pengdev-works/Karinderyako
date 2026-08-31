@@ -1,129 +1,158 @@
 import React from 'react';
 
-export default function RiderDashboard({ orders, onUpdateStatus }) {
+export default function RiderDashboard({ orders = [], onUpdateStatus }) {
   const activeOrders = orders.filter(
-    (o) => o.orderStatus !== 'DELIVERED' && o.orderStatus !== 'CANCELLED'
+    (o) => (o.order_status || o.orderStatus) !== 'DELIVERED' && (o.order_status || o.orderStatus) !== 'CANCELLED'
   );
-  const completedOrders = orders.filter((o) => o.orderStatus === 'DELIVERED');
+  const completedOrders = orders.filter(
+    (o) => (o.order_status || o.orderStatus) === 'DELIVERED'
+  );
 
   return (
-    <div className="dashboard-wrap">
-      <div className="container">
-        {/* Header */}
-        <div className="dashboard-header">
-          <div className="dashboard-header-left">
-            <div className="dashboard-title">
-              <i className="fas fa-motorcycle" style={{ color: 'var(--primary)', marginRight: '0.5rem' }}></i>
-              Delivery Rider Queue
-            </div>
-            <div className="dashboard-subtitle">
-              Coverage Area: Poblacion, Laang, Abra — Pick up and deliver active orders
-            </div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* Header Banner */}
+      <div className="bg-palayok text-kanin rounded-3xl p-6 sm:p-8 border-4 border-palayok-dark shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-banig font-bold">
+            <i className="fas fa-motorcycle text-atsuete"></i>
+            <span>Delivery Rider Queue</span>
           </div>
-          <span className="dashboard-badge">
-            <i className="fas fa-circle" style={{ fontSize: '0.5rem' }}></i>
-            Active On Duty
-          </span>
+          <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-kanin mt-1">
+            Poblacion Delivery Operations
+          </h1>
+          <p className="text-banig/80 text-xs sm:text-sm mt-1 font-body">
+            Coverage Area: Poblacion, Laang, Abra — Pick up from karinderyas and deliver to customers
+          </p>
         </div>
 
-        {/* Stats */}
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-label">Active Deliveries</div>
-            <div className="stat-value primary">{activeOrders.length}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Completed Today</div>
-            <div className="stat-value success">{completedOrders.length}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Total Orders</div>
-            <div className="stat-value">{orders.length}</div>
+        <div className="flex items-center gap-2 bg-banana-leaf/40 text-emerald-200 border border-banana-leaf/60 px-4 py-2 rounded-2xl font-mono text-xs font-bold">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-300 animate-ping"></span>
+          <span>On Duty Active</span>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="bg-banig/60 border-2 border-banig-dark/40 rounded-2xl p-4 shadow-sm">
+          <div className="text-xs font-mono uppercase font-bold text-atsuete">Active Deliveries</div>
+          <div className="font-display font-extrabold text-2xl sm:text-3xl text-atsuete mt-1">
+            {activeOrders.length}
           </div>
         </div>
-
-        {/* Active Orders */}
-        <div className="section-header">
-          <div>
-            <h2 className="section-title">Active Deliveries</h2>
-            <p className="section-subtitle">Update delivery status as you complete each order</p>
+        <div className="bg-banig/60 border-2 border-banig-dark/40 rounded-2xl p-4 shadow-sm">
+          <div className="text-xs font-mono uppercase font-bold text-banana-leaf">Completed Today</div>
+          <div className="font-display font-extrabold text-2xl sm:text-3xl text-banana-leaf mt-1">
+            {completedOrders.length}
           </div>
+        </div>
+        <div className="bg-banig/60 border-2 border-banig-dark/40 rounded-2xl p-4 shadow-sm col-span-2 lg:col-span-1">
+          <div className="text-xs font-mono uppercase font-bold text-palayok">Total Orders</div>
+          <div className="font-display font-extrabold text-2xl sm:text-3xl text-palayok mt-1">
+            {orders.length}
+          </div>
+        </div>
+      </div>
+
+      {/* Active Deliveries */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-display font-extrabold text-xl text-palayok">
+            Active Delivery Requests
+          </h2>
         </div>
 
         {activeOrders.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon"><i className="fas fa-motorcycle"></i></div>
-            <h3>No Active Deliveries</h3>
-            <p>All caught up! Incoming customer orders in Poblacion, Laang, Abra will appear here automatically.</p>
+          <div className="bg-banig/40 border-2 border-dashed border-banig-dark rounded-2xl p-8 text-center">
+            <i className="fas fa-motorcycle text-3xl text-palayok/40 mb-2 block"></i>
+            <h3 className="font-display font-bold text-base text-palayok mb-1">No Pending Deliveries</h3>
+            <p className="text-xs text-uling-light/80">All current orders in Poblacion have been delivered. New orders will automatically appear here!</p>
           </div>
         ) : (
-          <div>
-            {activeOrders.map((o) => (
-              <div className="order-card" key={o.id}>
-                <div className="order-card-header">
-                  <div className="order-ref">Order {o.id} — {o.karinderyaName}</div>
-                  <span className="status-badge open" style={{ position: 'static' }}>{o.orderStatus}</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {activeOrders.map((o) => {
+              const currentStatus = o.order_status || o.orderStatus || 'PLACED';
+              const totalAmt = parseFloat(o.total_amount || o.totalAmount || 0).toFixed(2);
+              return (
+                <div key={o.id} className="bg-banig rounded-2xl border-2 border-banig-dark/40 p-5 shadow-karinderya space-y-4">
+                  <div className="flex items-center justify-between border-b border-banig-dark/30 pb-3">
+                    <div>
+                      <div className="font-mono text-xs font-bold text-atsuete">Ref: {o.id}</div>
+                      <h4 className="font-display font-bold text-base text-palayok leading-tight">
+                        {o.karinderya_name || o.karinderyaName}
+                      </h4>
+                    </div>
+                    <span className="bg-palayok text-kanin px-3 py-1 rounded-full text-xs font-mono font-bold">
+                      {currentStatus}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5 text-xs font-body text-uling">
+                    <div className="flex items-start gap-2">
+                      <i className="fas fa-user text-palayok mt-0.5"></i>
+                      <span><strong>Customer:</strong> {o.customer_name || o.customerName} ({o.customer_phone || o.customerPhone})</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <i className="fas fa-location-dot text-atsuete mt-0.5"></i>
+                      <span><strong>Drop-off:</strong> {o.delivery_address || o.deliveryAddress}</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <i className="fas fa-money-bill-wave text-banana-leaf mt-0.5"></i>
+                      <span><strong>Collect COD:</strong> <span className="font-mono font-bold text-atsuete">₱{totalAmt}</span> ({o.payment_method || o.paymentMethod})</span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="pt-2 flex flex-wrap gap-2">
+                    {currentStatus === 'PLACED' && (
+                      <button
+                        onClick={() => onUpdateStatus(o.id, 'PREPARING')}
+                        className="bg-palayok hover:bg-palayok-dark text-kanin px-3.5 py-1.5 rounded-xl font-bold text-xs shadow transition-all"
+                      >
+                        <i className="fas fa-utensils mr-1"></i> Mark Preparing
+                      </button>
+                    )}
+                    {(currentStatus === 'PLACED' || currentStatus === 'PREPARING') && (
+                      <button
+                        onClick={() => onUpdateStatus(o.id, 'OUT_FOR_DELIVERY')}
+                        className="bg-atsuete hover:bg-atsuete-dark text-kanin px-3.5 py-1.5 rounded-xl font-bold text-xs shadow transition-all"
+                      >
+                        <i className="fas fa-motorcycle mr-1"></i> Out for Delivery
+                      </button>
+                    )}
+                    {currentStatus === 'OUT_FOR_DELIVERY' && (
+                      <button
+                        onClick={() => onUpdateStatus(o.id, 'DELIVERED')}
+                        className="bg-banana-leaf hover:bg-banana-leaf/90 text-kanin px-4 py-2 rounded-xl font-bold text-xs shadow transition-all"
+                      >
+                        <i className="fas fa-check-circle mr-1"></i> Mark Delivered & COD Collected
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="order-meta">
-                  <span><i className="fas fa-user" style={{ color: 'var(--accent)', marginRight: 4 }}></i>{o.customerName} — {o.customerPhone}</span>
-                  <span><i className="fas fa-map-marker-alt" style={{ color: 'var(--primary)', marginRight: 4 }}></i>Drop-off: {o.deliveryAddress}</span>
-                  <span><i className="fas fa-money-bill-wave" style={{ color: 'var(--success)', marginRight: 4 }}></i>Collect: ₱{o.totalAmount?.toFixed(2)} ({o.paymentMethod})</span>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Completed Deliveries */}
+      {completedOrders.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="font-display font-bold text-lg text-palayok">Completed Today</h3>
+          <div className="bg-banig/40 rounded-2xl border border-banig-dark/30 p-4 divide-y divide-banig-dark/20 text-xs font-mono">
+            {completedOrders.map((o) => (
+              <div key={o.id} className="py-2.5 flex items-center justify-between">
+                <div>
+                  <strong className="text-palayok">{o.id}</strong> — {o.customer_name || o.customerName} ({o.delivery_address || o.deliveryAddress})
                 </div>
-                <div className="order-actions">
-                  {o.orderStatus === 'PLACED' && (
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => onUpdateStatus(o.id, 'PREPARING')}
-                    >
-                      <i className="fas fa-utensils"></i> Mark Preparing
-                    </button>
-                  )}
-                  {(o.orderStatus === 'PLACED' || o.orderStatus === 'PREPARING') && (
-                    <button
-                      className="btn btn-primary btn-sm"
-                      onClick={() => onUpdateStatus(o.id, 'OUT_FOR_DELIVERY')}
-                    >
-                      <i className="fas fa-motorcycle"></i> Out for Delivery
-                    </button>
-                  )}
-                  {o.orderStatus === 'OUT_FOR_DELIVERY' && (
-                    <button
-                      className="btn btn-success btn-sm"
-                      onClick={() => onUpdateStatus(o.id, 'DELIVERED')}
-                    >
-                      <i className="fas fa-check-circle"></i> Mark Delivered
-                    </button>
-                  )}
-                </div>
+                <span className="text-banana-leaf font-bold">
+                  DELIVERED · ₱{parseFloat(o.total_amount || o.totalAmount || 0).toFixed(2)}
+                </span>
               </div>
             ))}
           </div>
-        )}
-
-        {/* Completed Orders */}
-        {completedOrders.length > 0 && (
-          <>
-            <div className="section-header" style={{ marginTop: '2rem' }}>
-              <div>
-                <h2 className="section-title">Completed Deliveries</h2>
-                <p className="section-subtitle">Successfully delivered orders</p>
-              </div>
-            </div>
-            {completedOrders.map((o) => (
-              <div className="order-card" key={o.id} style={{ opacity: 0.7 }}>
-                <div className="order-card-header">
-                  <div className="order-ref">Order {o.id}</div>
-                  <span className="status-badge open" style={{ position: 'static', background: 'var(--success)' }}>DELIVERED</span>
-                </div>
-                <div className="order-meta">
-                  <span>{o.customerName} — {o.deliveryAddress}</span>
-                  <span>₱{o.totalAmount?.toFixed(2)} Collected</span>
-                </div>
-              </div>
-            ))}
-          </>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

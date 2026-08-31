@@ -9,7 +9,7 @@ const pool    = require('./db/pool');      // triggers DB connection test
 const apiRouter = require('./routes/api');
 
 const app  = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5050;
 
 // ── CORS ──────────────────────────────────────────────────────
 // Allow requests from the frontend (Vercel URL or localhost)
@@ -28,12 +28,13 @@ app.use(cors({
       callback(new Error(`CORS: Origin "${origin}" not allowed`));
     }
   },
-  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ── REQUEST LOGGER ────────────────────────────────────────────
 app.use((req, _res, next) => {

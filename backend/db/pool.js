@@ -1,28 +1,25 @@
 /**
  * KarinderyaKo — Neon PostgreSQL Connection Pool
- * Uses the 'pg' package to connect to Neon serverless PostgreSQL
+ * Uses @neondatabase/serverless for WebSocket-based connectivity
+ * (avoids TCP/firewall issues with standard pg driver)
  */
 require('dotenv').config();
-const { Pool } = require('pg');
+const { Pool, neonConfig } = require('@neondatabase/serverless');
+const ws = require('ws');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false, // Required for Neon's managed PostgreSQL
-  },
-  max: 10,               // Max connections in pool
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
-});
+// Required for Node.js environments — provides WebSocket support
+neonConfig.webSocketConstructor = ws;
 
-// Test connection on startup
-pool.connect((err, client, release) => {
-  if (err) {
-    console.error('❌ Neon Database connection error:', err.message);
-  } else {
-    console.log('✅ Connected to Neon PostgreSQL Database');
-    release();
-  }
+// Clean connection string — remove unsupported params
+const rawUrl = process.env.DATABASE_URL || '';
+const cleanUrl = rawUrl
+  .replace(/[&?]channel_binding=[^&]*/g, '')
+  .replace(/sslmode=require/, 'sslmode=require'); // keep sslmode as-is
+
+const pool = new Pool({ connectionString: cleanUrl });
+
+pool.on('error', (err) => {
+  console.error('Unexpected Neon pool error:', err.message);
 });
 
 module.exports = pool;
