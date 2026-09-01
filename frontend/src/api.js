@@ -113,6 +113,9 @@ export const deleteMenuItem = (id) =>
 export const replyToReview = (reviewId, replyText) =>
   post(`/owner/reviews/${reviewId}/reply`, { reply: replyText });
 
+export const uploadStoreDocuments = (data) =>
+  post('/owner/documents', data);
+
 // ── PLATFORM ADMIN ────────────────────────────────────────────
 export const fetchAdminRestaurants = () =>
   get('/admin/restaurants');

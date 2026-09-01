@@ -18,6 +18,22 @@ async function audit(userRole, action, details, status = 'SUCCESS') {
   } catch (_) { /* non-critical */ }
 }
 
+// Auto-migrate business permit columns if not present
+(async () => {
+  try {
+    await pool.query(`
+      ALTER TABLE karinderyas ADD COLUMN IF NOT EXISTS business_permit TEXT;
+      ALTER TABLE karinderyas ADD COLUMN IF NOT EXISTS sanitary_permit TEXT;
+      ALTER TABLE karinderyas ADD COLUMN IF NOT EXISTS government_id TEXT;
+      ALTER TABLE karinderyas ADD COLUMN IF NOT EXISTS dti_permit TEXT;
+      ALTER TABLE karinderyas ADD COLUMN IF NOT EXISTS permit_status VARCHAR(30) DEFAULT 'PENDING_UPLOAD';
+      ALTER TABLE karinderyas ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+    `);
+  } catch (err) {
+    console.warn('Permit columns migration notice:', err.message);
+  }
+})();
+
 // ── HELPER: Geofence Check (Poblacion, Laang, Abra) ───────────
 function isInGeofence(address) {
   if (!address) return true;
@@ -652,6 +668,49 @@ router.put('/owner/restaurant', async (req, res) => {
 });
 
 /**
+ * POST /api/owner/documents
+ * Upload Business Permit, Sanitary Permit, Valid ID, and DTI certificate
+ */
+router.post('/owner/documents', async (req, res) => {
+  const { ownerUserId, karinderyaId, businessPermit, sanitaryPermit, governmentId, dtiPermit } = req.body;
+
+  if (!ownerUserId && !karinderyaId) {
+    return res.status(400).json({ error: 'Owner user ID or Store ID is required.' });
+  }
+
+  if (!businessPermit || !sanitaryPermit || !governmentId) {
+    return res.status(400).json({
+      error: 'Please upload all 3 required documents: Mayor\'s / Business Permit, Sanitary / Health Permit, and Valid Government ID.'
+    });
+  }
+
+  try {
+    const result = await pool.query(
+      `UPDATE karinderyas
+       SET business_permit = COALESCE($1, business_permit),
+           sanitary_permit = COALESCE($2, sanitary_permit),
+           government_id = COALESCE($3, government_id),
+           dti_permit = COALESCE($4, dti_permit),
+           permit_status = 'UNDER_REVIEW',
+           verified = TRUE
+       WHERE owner_user_id = $5 OR id = $6
+       RETURNING *`,
+      [businessPermit, sanitaryPermit, governmentId, dtiPermit, ownerUserId || null, karinderyaId || null]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Food business not found.' });
+    }
+
+    await audit('OWNER', 'UPLOAD_PERMITS', `Uploaded compliance permits for "${result.rows[0].name}"`, 'SUCCESS');
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Upload documents error:', err);
+    res.status(500).json({ error: 'Failed to upload business permits.' });
+  }
+});
+
+/**
  * POST /api/owner/menu
  */
 router.post('/owner/menu', async (req, res) => {
@@ -661,10 +720,18 @@ router.post('/owner/menu', async (req, res) => {
     return res.status(400).json({ error: 'Restaurant ID, item name, and price are required.' });
 
   try {
-    // Ownership check
-    const kRes = await pool.query('SELECT owner_user_id FROM karinderyas WHERE id = $1', [karinderyaId]);
+    // Ownership check & Document Compliance Check
+    const kRes = await pool.query('SELECT * FROM karinderyas WHERE id = $1', [karinderyaId]);
     if (kRes.rows.length === 0 || (ownerUserId && String(kRes.rows[0].owner_user_id) !== String(ownerUserId))) {
       return res.status(403).json({ error: 'FORBIDDEN: You do not own this restaurant.' });
+    }
+
+    const store = kRes.rows[0];
+    // Enforce business permit & sanitary permit & government ID before adding food
+    if (!store.business_permit || !store.sanitary_permit || !store.government_id) {
+      return res.status(403).json({
+        error: 'Compliance requirement: You must upload your Mayor\'s / Business Permit, Sanitary / Health Permit, and Valid Government ID before you can add food items to your menu.'
+      });
     }
 
     const prodRes = await pool.query(

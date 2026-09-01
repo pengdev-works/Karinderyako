@@ -8,6 +8,7 @@ export default function AdminDashboard() {
   const [auditLogs, setAuditLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('RESTAURANTS'); // RESTAURANTS | USERS | LOGS
+  const [previewDocModal, setPreviewDocModal] = useState(null); // { title, url }
 
   const loadAdminData = useCallback(async () => {
     setLoading(true);
@@ -138,10 +139,10 @@ export default function AdminDashboard() {
                     alt={r.name}
                     className="w-14 h-14 rounded-2xl object-cover border border-[#E8D9B5]"
                   />
-                  <div>
-                    <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
                       <h3 className="font-extrabold text-lg text-[#5C3A21]">{r.name}</h3>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase ${
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase ${
                         r.app_status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
                       }`}>
                         {r.app_status}
@@ -154,7 +155,78 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 pt-3 border-t border-[#E8D9B5] text-xs font-bold">
+                {/* ── PERMITS INSPECTION STRIP ── */}
+                <div className="bg-[#E8D9B5]/30 rounded-2xl p-3 border border-[#E8D9B5] space-y-2 text-xs">
+                  <div className="flex items-center justify-between font-bold text-[#5C3A21] text-[11px]">
+                    <span className="flex items-center gap-1.5">
+                      <i className="fas fa-file-shield text-[#C1440E]"></i>
+                      <span>Submitted Food Compliance Permits:</span>
+                    </span>
+                    <span className="text-[10px] font-mono uppercase text-[#4A3B2C]/70">
+                      {r.permit_status || (r.business_permit && r.sanitary_permit && r.government_id ? 'VERIFIED' : 'PENDING_UPLOAD')}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 text-[11px]">
+                    {r.business_permit ? (
+                      <button
+                        type="button"
+                        onClick={() => setPreviewDocModal({ title: `Mayor's / Business Permit — ${r.name}`, url: r.business_permit })}
+                        className="bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 px-2.5 py-1 rounded-xl font-bold flex items-center gap-1 transition shadow-xs"
+                      >
+                        <i className="fas fa-file-contract text-emerald-600"></i>
+                        <span>Mayor's Permit 👁️</span>
+                      </button>
+                    ) : (
+                      <span className="bg-red-50 text-red-700 border border-red-200 px-2 py-1 rounded-xl font-medium">
+                        ❌ Mayor's Permit Missing
+                      </span>
+                    )}
+
+                    {r.sanitary_permit ? (
+                      <button
+                        type="button"
+                        onClick={() => setPreviewDocModal({ title: `Sanitary / Health Permit — ${r.name}`, url: r.sanitary_permit })}
+                        className="bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 px-2.5 py-1 rounded-xl font-bold flex items-center gap-1 transition shadow-xs"
+                      >
+                        <i className="fas fa-notes-medical text-emerald-600"></i>
+                        <span>Sanitary Permit 👁️</span>
+                      </button>
+                    ) : (
+                      <span className="bg-red-50 text-red-700 border border-red-200 px-2 py-1 rounded-xl font-medium">
+                        ❌ Sanitary Permit Missing
+                      </span>
+                    )}
+
+                    {r.government_id ? (
+                      <button
+                        type="button"
+                        onClick={() => setPreviewDocModal({ title: `Owner Government ID — ${r.name} (${r.owner_name})`, url: r.government_id })}
+                        className="bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 px-2.5 py-1 rounded-xl font-bold flex items-center gap-1 transition shadow-xs"
+                      >
+                        <i className="fas fa-id-card text-emerald-600"></i>
+                        <span>Owner ID 👁️</span>
+                      </button>
+                    ) : (
+                      <span className="bg-red-50 text-red-700 border border-red-200 px-2 py-1 rounded-xl font-medium">
+                        ❌ Valid ID Missing
+                      </span>
+                    )}
+
+                    {r.dti_permit && (
+                      <button
+                        type="button"
+                        onClick={() => setPreviewDocModal({ title: `DTI / Barangay Permit — ${r.name}`, url: r.dti_permit })}
+                        className="bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100 px-2.5 py-1 rounded-xl font-bold flex items-center gap-1 transition shadow-xs"
+                      >
+                        <i className="fas fa-certificate text-blue-600"></i>
+                        <span>DTI/Barangay 👁️</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2 border-t border-[#E8D9B5] text-xs font-bold">
                   {r.app_status !== 'APPROVED' && (
                     <button
                       onClick={() => handleUpdateStatus(r.id, 'APPROVED')}
@@ -235,6 +307,44 @@ export default function AdminDashboard() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── PERMITS ZOOM PREVIEW MODAL ── */}
+      {previewDocModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#F7F1E3] rounded-3xl overflow-hidden max-w-2xl w-full border border-[#E8D9B5] shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="p-4 bg-[#5C3A21] text-[#F7F1E3] flex items-center justify-between shadow">
+              <div className="flex items-center gap-2">
+                <i className="fas fa-file-contract text-[#C1440E]"></i>
+                <h3 className="font-display font-bold text-sm sm:text-base">{previewDocModal.title}</h3>
+              </div>
+              <button
+                onClick={() => setPreviewDocModal(null)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-[#F7F1E3] flex items-center justify-center transition"
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            <div className="p-4 overflow-y-auto flex-1 flex items-center justify-center bg-neutral-900/5 min-h-[300px]">
+              <img
+                src={previewDocModal.url}
+                alt={previewDocModal.title}
+                className="max-h-[70vh] max-w-full object-contain rounded-xl shadow-lg border border-[#E8D9B5]"
+              />
+            </div>
+
+            <div className="p-3 bg-[#E8D9B5]/40 border-t border-[#E8D9B5] flex items-center justify-between text-xs text-[#5C3A21] font-semibold">
+              <span>Platform Verification • Official Compliance Document</span>
+              <button
+                onClick={() => setPreviewDocModal(null)}
+                className="bg-[#C1440E] text-[#F7F1E3] px-4 py-1.5 rounded-xl font-bold"
+              >
+                Close Preview
+              </button>
+            </div>
           </div>
         </div>
       )}
