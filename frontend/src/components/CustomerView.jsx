@@ -164,8 +164,14 @@ export default function CustomerView({
                   <div className="pt-3 border-t border-banig-dark/30 flex items-center justify-between">
                     <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-palayok">
                       <i className="fas fa-star text-amber-500"></i>
-                      <span>{parseFloat(k.rating || 5.0).toFixed(1)}</span>
-                      <span className="text-uling-light/60 font-normal">({k.review_count || k.reviewCount || 0})</span>
+                      {(k.review_count || k.reviewCount) > 0 && k.rating ? (
+                        <>
+                          <span>{parseFloat(k.rating).toFixed(1)}</span>
+                          <span className="text-uling-light/60 font-normal">({k.review_count || k.reviewCount})</span>
+                        </>
+                      ) : (
+                        <span>New</span>
+                      )}
                     </div>
                     <span className="bg-palayok text-kanin group-hover:bg-atsuete font-display text-xs font-bold px-3 py-1.5 rounded-xl transition-colors">
                       View Menu →

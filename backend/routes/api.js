@@ -232,11 +232,11 @@ router.get('/restaurants', async (req, res) => {
 
     // Sort order
     if (sort === 'rating') {
-      query += ` ORDER BY k.rating DESC, k.review_count DESC`;
+      query += ` ORDER BY k.rating DESC NULLS LAST, k.review_count DESC`;
     } else if (sort === 'delivery_fee') {
       query += ` ORDER BY k.delivery_fee ASC`;
     } else {
-      query += ` ORDER BY k.status DESC, k.rating DESC, k.id ASC`;
+      query += ` ORDER BY k.status DESC, k.rating DESC NULLS LAST, k.id ASC`;
     }
 
     const result = await pool.query(query, params);

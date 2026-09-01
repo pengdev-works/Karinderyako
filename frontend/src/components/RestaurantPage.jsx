@@ -121,8 +121,17 @@ export default function RestaurantPage({
               <div className="flex items-center gap-2">
                 <i className="fas fa-star text-amber-500 text-base"></i>
                 <div>
-                  <span className="font-bold text-[#5C3A21]">{restaurant.rating || 4.8}</span>
-                  <span className="text-[#4A3B2C]/60 text-xs ml-1">({restaurant.review_count || 12} reviews)</span>
+                  {restaurant.review_count > 0 && restaurant.rating ? (
+                    <>
+                      <span className="font-bold text-[#5C3A21]">{Number(restaurant.rating).toFixed(1)}</span>
+                      <span className="text-[#4A3B2C]/60 text-xs ml-1">({restaurant.review_count} {restaurant.review_count === 1 ? 'review' : 'reviews'})</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-bold text-[#5C3A21]">New</span>
+                      <span className="text-[#4A3B2C]/60 text-xs ml-1">(No reviews yet)</span>
+                    </>
+                  )}
                 </div>
               </div>
 

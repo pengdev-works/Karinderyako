@@ -67,7 +67,9 @@ export default function FavoritesPage({
                   </div>
                   <p className="text-xs text-[#4A3B2C]/80 line-clamp-1">{restaurant.category}</p>
                   <div className="text-xs font-bold text-[#5C3A21] pt-1">
-                    ⭐ {restaurant.rating || 4.8} ({restaurant.review_count || 12} reviews)
+                    {restaurant.review_count > 0 && restaurant.rating 
+                      ? `⭐ ${Number(restaurant.rating).toFixed(1)} (${restaurant.review_count} reviews)` 
+                      : `⭐ New (No reviews yet)`}
                   </div>
                 </div>
               </div>

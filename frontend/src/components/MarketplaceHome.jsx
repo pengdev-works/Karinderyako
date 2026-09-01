@@ -224,8 +224,14 @@ export default function MarketplaceHome({
                     <div className="flex items-center justify-between text-xs pt-2 border-t border-[#E8D9B5]/60 font-semibold text-[#2B2118]">
                       <div className="flex items-center gap-1.5 bg-[#E8D9B5]/60 px-2.5 py-1 rounded-lg">
                         <i className="fas fa-star text-amber-500"></i>
-                        <span className="font-bold text-[#5C3A21]">{restaurant.rating || 4.8}</span>
-                        <span className="text-[#4A3B2C]/60 text-[11px]">({restaurant.review_count || 12})</span>
+                        {restaurant.review_count > 0 && restaurant.rating ? (
+                          <>
+                            <span className="font-bold text-[#5C3A21]">{Number(restaurant.rating).toFixed(1)}</span>
+                            <span className="text-[#4A3B2C]/60 text-[11px]">({restaurant.review_count})</span>
+                          </>
+                        ) : (
+                          <span className="font-bold text-[#5C3A21] text-[11px]">New</span>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-3 text-[#4A3B2C]/80">
