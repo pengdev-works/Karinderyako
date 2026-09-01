@@ -173,7 +173,7 @@ export default function OwnerDashboard({ userSession, onOpenMarketplace }) {
     (store?.government_id || governmentId)
   );
 
-  // Document file upload with client compression
+  // Document file upload with automatic saving and client compression
   const handlePermitFileChange = async (e, type) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -181,14 +181,44 @@ export default function OwnerDashboard({ userSession, onOpenMarketplace }) {
       alert('Document file must be under 15 MB');
       return;
     }
+    setDocsLoading(true);
     try {
-      const compressed = await compressImage(file, 1600, 1600, 0.88);
-      if (type === 'BUSINESS') setBusinessPermit(compressed);
-      else if (type === 'SANITARY') setSanitaryPermit(compressed);
-      else if (type === 'GOV_ID') setGovernmentId(compressed);
-      else if (type === 'DTI') setDtiPermit(compressed);
+      const compressed = await compressImage(file, 1000, 1000, 0.80);
+      const payload = {
+        ownerUserId: userSession.id,
+        karinderyaId: store?.id,
+      };
+
+      if (type === 'BUSINESS') {
+        setBusinessPermit(compressed);
+        payload.businessPermit = compressed;
+      } else if (type === 'SANITARY') {
+        setSanitaryPermit(compressed);
+        payload.sanitaryPermit = compressed;
+      } else if (type === 'GOV_ID') {
+        setGovernmentId(compressed);
+        payload.governmentId = compressed;
+      } else if (type === 'DTI') {
+        setDtiPermit(compressed);
+        payload.dtiPermit = compressed;
+      }
+
+      // Auto-save immediately to PostgreSQL database so refreshing the page preserves the document!
+      if (store?.id || userSession?.id) {
+        const updatedStore = await api.uploadStoreDocuments(payload);
+        if (updatedStore) {
+          setStore(updatedStore);
+          if (updatedStore.business_permit) setBusinessPermit(updatedStore.business_permit);
+          if (updatedStore.sanitary_permit) setSanitaryPermit(updatedStore.sanitary_permit);
+          if (updatedStore.government_id) setGovernmentId(updatedStore.government_id);
+          if (updatedStore.dti_permit) setDtiPermit(updatedStore.dti_permit);
+        }
+      }
     } catch (err) {
-      alert('Failed to process document file');
+      console.error('Document upload error:', err);
+      alert(`⚠️ Failed to upload document: ${err.message}`);
+    } finally {
+      setDocsLoading(false);
     }
   };
 
@@ -203,7 +233,7 @@ export default function OwnerDashboard({ userSession, onOpenMarketplace }) {
     try {
       const updatedStore = await api.uploadStoreDocuments({
         ownerUserId: userSession.id,
-        karinderyaId: store.id,
+        karinderyaId: store?.id,
         businessPermit,
         sanitaryPermit,
         governmentId,

@@ -674,39 +674,49 @@ router.put('/owner/restaurant', async (req, res) => {
 router.post('/owner/documents', async (req, res) => {
   const { ownerUserId, karinderyaId, businessPermit, sanitaryPermit, governmentId, dtiPermit } = req.body;
 
-  if (!ownerUserId && !karinderyaId) {
+  const validOwnerId = Number(ownerUserId) || null;
+  const validStoreId = Number(karinderyaId) || null;
+
+  if (!validOwnerId && !validStoreId) {
     return res.status(400).json({ error: 'Owner user ID or Store ID is required.' });
   }
 
-  if (!businessPermit || !sanitaryPermit || !governmentId) {
-    return res.status(400).json({
-      error: 'Please upload all 3 required documents: Mayor\'s / Business Permit, Sanitary / Health Permit, and Valid Government ID.'
-    });
-  }
-
   try {
+    // 1. Update the document columns (COALESCE preserves existing if null/undefined)
     const result = await pool.query(
       `UPDATE karinderyas
        SET business_permit = COALESCE($1, business_permit),
            sanitary_permit = COALESCE($2, sanitary_permit),
            government_id = COALESCE($3, government_id),
-           dti_permit = COALESCE($4, dti_permit),
-           permit_status = 'UNDER_REVIEW',
-           verified = TRUE
-       WHERE owner_user_id = $5 OR id = $6
+           dti_permit = COALESCE($4, dti_permit)
+       WHERE (id = $5) OR (owner_user_id = $6)
        RETURNING *`,
-      [businessPermit, sanitaryPermit, governmentId, dtiPermit, ownerUserId || null, karinderyaId || null]
+      [businessPermit || null, sanitaryPermit || null, governmentId || null, dtiPermit || null, validStoreId, validOwnerId]
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Food business not found.' });
     }
 
-    await audit('OWNER', 'UPLOAD_PERMITS', `Uploaded compliance permits for "${result.rows[0].name}"`, 'SUCCESS');
-    res.json(result.rows[0]);
+    const updated = result.rows[0];
+    const hasAllMandatory = Boolean(updated.business_permit && updated.sanitary_permit && updated.government_id);
+    const newStatus = hasAllMandatory ? 'UNDER_REVIEW' : 'PENDING_UPLOAD';
+
+    // 2. Set permit_status and verified flags
+    const finalRes = await pool.query(
+      `UPDATE karinderyas
+       SET permit_status = $1,
+           verified = $2
+       WHERE id = $3
+       RETURNING *`,
+      [newStatus, hasAllMandatory, updated.id]
+    );
+
+    await audit('OWNER', 'UPLOAD_PERMITS', `Uploaded compliance permits for "${updated.name}" (${newStatus})`, 'SUCCESS');
+    res.json(finalRes.rows[0]);
   } catch (err) {
     console.error('Upload documents error:', err);
-    res.status(500).json({ error: 'Failed to upload business permits.' });
+    res.status(500).json({ error: 'Failed to upload business permits: ' + err.message });
   }
 });
 
