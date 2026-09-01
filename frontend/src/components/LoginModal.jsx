@@ -6,12 +6,21 @@ export default function LoginModal({
   onLoginSuccess,
   onRegisterCustomerSuccess,
   onRegisterVendorSuccess,
+  reasonMessage = '',
+  initialTab = 'LOGIN',
 }) {
-  const [tab, setTab] = useState('LOGIN'); // LOGIN | REG_CUSTOMER | REG_VENDOR
+  const [tab, setTab] = useState(initialTab); // LOGIN | REG_CUSTOMER | REG_VENDOR
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Update tab if initialTab prop changes
+  React.useEffect(() => {
+    if (isOpen && initialTab) {
+      setTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
 
   // Customer Reg State
   const [cName, setCName] = useState('');
@@ -64,9 +73,15 @@ export default function LoginModal({
         phone: cPhone,
         address: cAddress,
       });
-      alert('✅ Account created successfully! Please log in.');
-      setTab('LOGIN');
-      setEmail(cEmail);
+      // Auto login after successful customer registration
+      try {
+        await onLoginSuccess(cEmail, cPassword);
+        onClose();
+      } catch {
+        alert('✅ Account created successfully! Please sign in.');
+        setTab('LOGIN');
+        setEmail(cEmail);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -106,13 +121,25 @@ export default function LoginModal({
         {/* Header */}
         <div className="p-5 bg-[#5C3A21] text-[#F7F1E3] flex items-center justify-between shadow-md shrink-0">
           <div>
-            <h2 className="font-display font-extrabold text-xl">Account Login & Registration</h2>
-            <p className="text-xs text-[#E8D9B5]/80">Karinderya Ko Food Marketplace</p>
+            <h2 className="font-display font-extrabold text-xl flex items-center gap-2">
+              <i className="fas fa-shield-alt text-[#C1440E]"></i>
+              <span>Account Login & Registration</span>
+            </h2>
+            <p className="text-xs text-[#E8D9B5]/80">
+              {reasonMessage || 'Karinderya Ko Food Marketplace • Poblacion, Laang'}
+            </p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-[#F7F1E3] flex items-center justify-center">
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-[#F7F1E3] flex items-center justify-center transition">
             <i className="fas fa-times"></i>
           </button>
         </div>
+
+        {reasonMessage && (
+          <div className="bg-[#C1440E]/10 border-b border-[#C1440E]/20 px-5 py-2.5 text-xs text-[#C1440E] font-bold flex items-center gap-2">
+            <i className="fas fa-lock"></i>
+            <span>{reasonMessage}</span>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex border-b border-[#E8D9B5] bg-[#E8D9B5]/30 shrink-0">

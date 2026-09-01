@@ -5,6 +5,7 @@ export default function CartDrawer({
   onClose,
   cart = [],
   cartRestaurant,
+  userSession,
   onUpdateQty,
   onRemoveItem,
   onClearCart,
@@ -118,7 +119,28 @@ export default function CartDrawer({
 
         {/* Footer Summary & Checkout */}
         {cart.length > 0 && (
-          <div className="p-5 bg-[#E8D9B5]/50 border-t border-[#E8D9B5] space-y-4 shrink-0">
+          <div className="p-5 bg-[#E8D9B5]/50 border-t border-[#E8D9B5] space-y-3.5 shrink-0">
+            {/* Login Notice if Guest */}
+            {!userSession ? (
+              <div className="bg-[#5C3A21]/10 rounded-2xl p-3 text-xs text-[#5C3A21] flex items-start gap-2.5 border border-[#D4C299]/70">
+                <i className="fas fa-shield-halved text-[#C1440E] text-base mt-0.5 shrink-0"></i>
+                <div>
+                  <div className="font-bold">Login Required to Checkout</div>
+                  <p className="text-[11px] text-[#4A3B2C]/80 mt-0.5">
+                    Sign in to verify your address, secure payment, and track your rider in real time.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between text-[11px] font-bold text-[#4B6043] bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">
+                <span className="flex items-center gap-1.5">
+                  <i className="fas fa-check-circle"></i>
+                  <span>Signed in as {userSession.name}</span>
+                </span>
+                <span className="text-[#5C3A21]/60 text-[10px]">Secure Session</span>
+              </div>
+            )}
+
             <div className="space-y-1.5 text-xs text-[#4A3B2C] font-medium">
               <div className="flex justify-between">
                 <span>Subtotal</span>
@@ -141,7 +163,10 @@ export default function CartDrawer({
               }}
               className="w-full bg-[#C1440E] hover:bg-[#A03408] text-[#F7F1E3] font-display font-extrabold py-3.5 px-6 rounded-2xl text-base shadow-xl transition-all flex items-center justify-between"
             >
-              <span>Checkout</span>
+              <span className="flex items-center gap-2">
+                <i className={`fas ${userSession ? 'fa-arrow-right' : 'fa-lock'} text-sm`}></i>
+                <span>{userSession ? 'Proceed to Checkout' : 'Login to Checkout'}</span>
+              </span>
               <span className="font-mono text-lg">₱{grandTotal.toFixed(0)}</span>
             </button>
           </div>

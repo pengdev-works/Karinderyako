@@ -318,6 +318,10 @@ router.post('/orders', async (req, res) => {
     paymentMethod,
   } = req.body;
 
+  if (!customerUserId || isNaN(Number(customerUserId)) || Number(customerUserId) <= 0) {
+    return res.status(401).json({ error: 'Customer login is required to place a secure order.' });
+  }
+
   if (!karinderyaId || !customerName || !customerPhone || !deliveryAddress || !items || items.length === 0) {
     return res.status(400).json({ error: 'Missing required order details or items.' });
   }
@@ -325,6 +329,13 @@ router.post('/orders', async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+
+    // 0. Verify customer user exists
+    const userCheck = await client.query('SELECT id FROM users WHERE id = $1', [Number(customerUserId)]);
+    if (userCheck.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(401).json({ error: 'Invalid or expired customer account session. Please log in again.' });
+    }
 
     // 1. Fetch restaurant
     const kRes = await client.query('SELECT * FROM karinderyas WHERE id = $1 LIMIT 1', [karinderyaId]);

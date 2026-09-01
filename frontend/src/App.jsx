@@ -68,6 +68,14 @@ export default function App() {
   // ── FAVORITES & MODALS ────────────────────────────────────────
   const [favorites, setFavorites] = useState([]);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [loginReasonMessage, setLoginReasonMessage] = useState('');
+  const [loginInitialTab, setLoginInitialTab] = useState('LOGIN');
+
+  const handleRequireLogin = (reason = '', tab = 'LOGIN') => {
+    setLoginReasonMessage(reason);
+    setLoginInitialTab(tab);
+    setIsLoginModalOpen(true);
+  };
 
   // ── FETCH MARKETPLACE RESTAURANTS ──────────────────────────────
   const loadRestaurants = useCallback(async () => {
@@ -319,7 +327,16 @@ export default function App() {
             cartRestaurant={cartRestaurant}
             userSession={userSession}
             onPlaceOrder={handlePlaceOrder}
-            onBackToMenu={() => setActiveView('RESTAURANT_DETAIL')}
+            onBackToMenu={() => {
+              if (selectedRestaurant) setActiveView('RESTAURANT_DETAIL');
+              else setActiveView('MARKETPLACE');
+            }}
+            onRequireLogin={(tab) => {
+              handleRequireLogin(
+                '🔒 Please log in or register to complete your order and secure your delivery details.',
+                tab || 'LOGIN'
+              );
+            }}
             loading={placingOrder}
           />
         )}
@@ -499,21 +516,42 @@ export default function App() {
         onClose={() => setIsCartOpen(false)}
         cart={cart}
         cartRestaurant={cartRestaurant}
+        userSession={userSession}
         onUpdateQty={handleUpdateCartQty}
         onRemoveItem={handleRemoveCartItem}
         onClearCart={handleClearCart}
-        onProceedToCheckout={() => setActiveView('CHECKOUT')}
+        onProceedToCheckout={() => {
+          if (!userSession) {
+            handleRequireLogin('🔒 Please log in or create an account to proceed to checkout and secure your order.');
+          } else {
+            setActiveView('CHECKOUT');
+          }
+        }}
       />
 
       {/* Login & Registration Modal */}
       <LoginModal
         isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)}
+        onClose={() => {
+          setIsLoginModalOpen(false);
+          setLoginReasonMessage('');
+        }}
+        reasonMessage={loginReasonMessage}
+        initialTab={loginInitialTab}
         onLoginSuccess={async (email, password) => {
           const user = await api.login(email, password);
           handleSetSession(user);
-          if (user.role === 'OWNER') setActiveView('OWNER_PORTAL');
-          else if (user.role === 'ADMIN') setActiveView('ADMIN_PANEL');
+          if (user.role === 'OWNER') {
+            setActiveView('OWNER_PORTAL');
+          } else if (user.role === 'ADMIN') {
+            setActiveView('ADMIN_PANEL');
+          } else {
+            // Customer
+            if (cart.length > 0) {
+              setActiveView('CHECKOUT');
+              setIsCartOpen(false);
+            }
+          }
         }}
         onRegisterCustomerSuccess={(data) => api.registerCustomer(data)}
         onRegisterVendorSuccess={(data) => api.registerVendor(data)}
