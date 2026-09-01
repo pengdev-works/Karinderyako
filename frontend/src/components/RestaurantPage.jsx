@@ -289,6 +289,105 @@ export default function RestaurantPage({
         )}
       </div>
 
+      {/* ── CUSTOMER REVIEWS & RATINGS SECTION ──────────────────────── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 mb-16 space-y-6">
+        <div className="border-t border-[#E8D9B5] pt-8 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 className="font-display font-extrabold text-2xl text-[#5C3A21] flex items-center gap-2">
+              <i className="fas fa-star text-amber-500"></i>
+              <span>Customer Reviews & Ratings</span>
+            </h2>
+            <p className="text-xs text-[#4A3B2C]/70 mt-0.5">
+              Verified feedback from diners in Poblacion, Laang, Abra
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 bg-[#E8D9B5]/60 px-4 py-2 rounded-2xl border border-[#D4C299]">
+            <i className="fas fa-star text-amber-500 text-base"></i>
+            {restaurant.review_count > 0 && restaurant.rating ? (
+              <>
+                <span className="font-display font-extrabold text-lg text-[#5C3A21]">
+                  {Number(restaurant.rating).toFixed(1)}
+                </span>
+                <span className="text-xs text-[#4A3B2C]/70 font-semibold">
+                  ({restaurant.review_count} {restaurant.review_count === 1 ? 'review' : 'reviews'})
+                </span>
+              </>
+            ) : (
+              <span className="font-bold text-xs text-[#5C3A21]">New (No reviews yet)</span>
+            )}
+          </div>
+        </div>
+
+        {/* Reviews List */}
+        {!restaurant.reviews || restaurant.reviews.length === 0 ? (
+          <div className="bg-[#F7F1E3] rounded-3xl p-8 border border-[#E8D9B5] text-center space-y-2 max-w-md mx-auto shadow-xs">
+            <div className="w-12 h-12 rounded-full bg-[#E8D9B5] text-[#5C3A21] flex items-center justify-center text-xl mx-auto">
+              <i className="fas fa-comment-dots text-[#C1440E]"></i>
+            </div>
+            <h3 className="font-display font-bold text-base text-[#5C3A21]">No reviews yet</h3>
+            <p className="text-xs text-[#4A3B2C]/70">
+              Be the first customer to place an order and rate the food from {restaurant.name}!
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {restaurant.reviews.map((rev) => (
+              <div
+                key={rev.id}
+                className="bg-[#F7F1E3] rounded-3xl p-5 border border-[#E8D9B5] shadow-sm space-y-3 flex flex-col justify-between"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-[#5C3A21] text-[#F7F1E3] font-bold text-xs flex items-center justify-center">
+                        {(rev.customer_name || 'C')[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="font-bold text-xs text-[#5C3A21]">{rev.customer_name || 'Verified Customer'}</div>
+                        <div className="text-[10px] text-[#4A3B2C]/60">
+                          {new Date(rev.created_at).toLocaleDateString(undefined, {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex text-amber-500 text-xs gap-0.5">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <i
+                          key={star}
+                          className={`fas fa-star ${star <= Number(rev.rating) ? 'text-amber-500' : 'text-neutral-300'}`}
+                        ></i>
+                      ))}
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-[#2B2118] font-medium leading-relaxed bg-[#E8D9B5]/20 p-3 rounded-2xl border border-[#E8D9B5]/40">
+                    "{rev.comment || 'Great food and fast delivery!'}"
+                  </p>
+                </div>
+
+                {/* Owner Reply */}
+                {rev.reply && (
+                  <div className="bg-[#4B6043]/10 border border-[#4B6043]/25 rounded-2xl p-3 space-y-1 text-xs">
+                    <div className="font-bold text-[11px] text-[#4B6043] flex items-center gap-1.5">
+                      <i className="fas fa-reply text-[10px]"></i>
+                      <span>Response from {restaurant.name}:</span>
+                    </div>
+                    <p className="text-[11px] text-[#2B2118] italic pl-3 border-l-2 border-[#4B6043]/40">
+                      "{rev.reply}"
+                    </p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* ── FLOATING VIEW CART BAR (MOBILE/DESKTOP STICKY) ───────────── */}
       {cartCount > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-11/12 max-w-md">

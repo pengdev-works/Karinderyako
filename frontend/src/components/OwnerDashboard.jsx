@@ -105,8 +105,10 @@ export default function OwnerDashboard({ userSession, onOpenMarketplace }) {
     }
   };
 
-  // Reply State
+  // Reviews State
+  const [reviews, setReviews] = useState([]);
   const [replyText, setReplyText] = useState({});
+  const [replyingId, setReplyingId] = useState(null);
 
   // ── FETCH STORE DATA ─────────────────────────────────────────
   const loadOwnerData = useCallback(async () => {
@@ -128,14 +130,16 @@ export default function OwnerDashboard({ userSession, onOpenMarketplace }) {
         setStoreLogo(storeData.logo || '');
         setStoreStatus(storeData.status || 'open');
 
-        // Fetch products and orders isolated to this store
-        const [prodList, orderList] = await Promise.all([
+        // Fetch full restaurant (with reviews), menu, and orders
+        const [fullStore, prodList, orderList] = await Promise.all([
+          api.fetchRestaurantById(storeData.id),
           api.fetchRestaurantMenu(storeData.id),
           api.fetchOrders({ karinderyaId: storeData.id }),
         ]);
 
-        setProducts(prodList);
-        setOrders(orderList);
+        setProducts(prodList || []);
+        setOrders(orderList || []);
+        setReviews(fullStore?.reviews || []);
       }
     } catch (err) {
       console.error('Error loading store portal:', err);
@@ -147,6 +151,26 @@ export default function OwnerDashboard({ userSession, onOpenMarketplace }) {
   useEffect(() => {
     loadOwnerData();
   }, [loadOwnerData]);
+
+  // ── REPLY TO REVIEW ──────────────────────────────────────────
+  const handleReplyReview = async (reviewId) => {
+    const text = replyText[reviewId];
+    if (!text || !text.trim()) {
+      alert('Please type a response before submitting.');
+      return;
+    }
+    setReplyingId(reviewId);
+    try {
+      const updated = await api.replyToReview(reviewId, text.trim());
+      setReviews((prev) => prev.map((r) => (r.id === reviewId ? { ...r, reply: updated.reply, reply_at: updated.reply_at } : r)));
+      setReplyText((prev) => ({ ...prev, [reviewId]: '' }));
+      alert('✅ Reply posted successfully!');
+    } catch (err) {
+      alert(`❌ Failed to post reply: ${err.message}`);
+    } finally {
+      setReplyingId(null);
+    }
+  };
 
   // ── UPDATE STORE PROFILE ─────────────────────────────────────
   const handleSaveProfile = async (e) => {
@@ -332,6 +356,18 @@ export default function OwnerDashboard({ userSession, onOpenMarketplace }) {
         >
           <i className="fas fa-utensils mr-2"></i>
           Menu Items ({products.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('REVIEWS')}
+          className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all ${
+            activeTab === 'REVIEWS'
+              ? 'bg-[#C1440E] text-[#F7F1E3] shadow'
+              : 'bg-[#E8D9B5]/40 text-[#2B2118] hover:bg-[#E8D9B5]'
+          }`}
+        >
+          <i className="fas fa-star text-amber-500 mr-1.5"></i>
+          Customer Reviews ({reviews.length})
         </button>
 
         <button
@@ -687,7 +723,175 @@ export default function OwnerDashboard({ userSession, onOpenMarketplace }) {
         </div>
       )}
 
-      {/* ── TAB 3: STORE SETTINGS ────────────────────────────────────── */}
+      {/* ── TAB 3: CUSTOMER REVIEWS & RATINGS ────────────────────── */}
+      {activeTab === 'REVIEWS' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-display font-bold text-xl text-[#5C3A21]">Customer Reviews & Ratings</h2>
+              <p className="text-xs text-[#4A3B2C]/70">Feedback submitted by verified customers who ordered from your store</p>
+            </div>
+            <button
+              onClick={loadOwnerData}
+              className="text-xs font-bold text-[#C1440E] bg-[#E8D9B5]/40 px-3 py-1.5 rounded-xl hover:bg-[#E8D9B5] transition"
+            >
+              <i className="fas fa-sync-alt mr-1"></i> Refresh Reviews
+            </button>
+          </div>
+
+          {/* Rating Summary Card */}
+          <div className="bg-[#F7F1E3] rounded-3xl p-6 border border-[#E8D9B5] shadow-md grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+            <div className="text-center md:text-left md:border-r border-[#E8D9B5] md:pr-6 space-y-1">
+              <div className="text-xs font-bold uppercase text-[#4A3B2C]/70 tracking-wider">Overall Rating</div>
+              <div className="flex items-center justify-center md:justify-start gap-2">
+                <span className="font-display font-extrabold text-4xl text-[#5C3A21]">
+                  {store.review_count > 0 && store.rating ? Number(store.rating).toFixed(1) : 'New'}
+                </span>
+                {store.review_count > 0 && (
+                  <div className="flex text-amber-500 text-sm">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <i
+                        key={star}
+                        className={`fas fa-star ${star <= Math.round(Number(store.rating || 0)) ? 'text-amber-500' : 'text-neutral-300'}`}
+                      ></i>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="text-xs text-[#4A3B2C]/80 font-medium">
+                {reviews.length} total customer {reviews.length === 1 ? 'review' : 'reviews'}
+              </div>
+            </div>
+
+            <div className="md:col-span-2 space-y-1.5 text-xs text-[#5C3A21] font-semibold">
+              {[5, 4, 3, 2, 1].map((stars) => {
+                const count = reviews.filter((r) => Number(r.rating) === stars).length;
+                const pct = reviews.length > 0 ? (count / reviews.length) * 100 : 0;
+                return (
+                  <div key={stars} className="flex items-center gap-2">
+                    <span className="w-10 text-right">{stars} ★</span>
+                    <div className="flex-1 h-2 bg-[#E8D9B5]/60 rounded-full overflow-hidden">
+                      <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: `${pct}%` }}></div>
+                    </div>
+                    <span className="w-6 text-[11px] text-[#4A3B2C]/60 text-right">{count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Reviews List */}
+          {reviews.length === 0 ? (
+            <div className="bg-[#E8D9B5]/30 border-2 border-dashed border-[#D4C299] rounded-3xl p-12 text-center max-w-md mx-auto space-y-3">
+              <div className="w-14 h-14 rounded-full bg-[#E8D9B5] text-[#5C3A21] flex items-center justify-center text-2xl mx-auto shadow-inner">
+                <i className="fas fa-star-half-stroke text-amber-500"></i>
+              </div>
+              <h3 className="font-display font-bold text-lg text-[#5C3A21]">No Reviews Yet</h3>
+              <p className="text-xs text-[#4A3B2C]/70">
+                When customers complete their orders and rate their meals, their comments and star ratings will show here.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {reviews.map((r) => (
+                <div
+                  key={r.id}
+                  className="bg-[#F7F1E3] rounded-3xl p-5 border border-[#E8D9B5] shadow-sm space-y-3.5"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2 border-b border-[#E8D9B5]/60 pb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-[#5C3A21] text-[#F7F1E3] font-display font-extrabold flex items-center justify-center text-sm shadow-xs">
+                        {(r.customer_name || 'C')[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="font-bold text-sm text-[#5C3A21] flex items-center gap-2">
+                          <span>{r.customer_name || 'Verified Customer'}</span>
+                          {r.order_id && (
+                            <span className="bg-[#E8D9B5]/60 text-[#5C3A21] text-[10px] font-mono px-2 py-0.5 rounded-md">
+                              Order #{r.order_id}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-[#4A3B2C]/60">
+                          {new Date(r.created_at).toLocaleDateString(undefined, {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 bg-[#E8D9B5]/60 px-3 py-1 rounded-xl">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <i
+                          key={star}
+                          className={`fas fa-star text-xs ${
+                            star <= Number(r.rating) ? 'text-amber-500' : 'text-neutral-300'
+                          }`}
+                        ></i>
+                      ))}
+                      <span className="font-bold text-xs text-[#5C3A21] ml-1">{r.rating}.0</span>
+                    </div>
+                  </div>
+
+                  {/* Customer Comment */}
+                  <p className="text-xs sm:text-sm text-[#2B2118] font-medium leading-relaxed bg-[#E8D9B5]/20 p-3 rounded-2xl border border-[#E8D9B5]/50">
+                    "{r.comment || 'No written comment.'}"
+                  </p>
+
+                  {/* Owner Response Section */}
+                  {r.reply ? (
+                    <div className="bg-[#4B6043]/10 border border-[#4B6043]/30 rounded-2xl p-3.5 space-y-1">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-[#4B6043]">
+                        <span className="flex items-center gap-1.5">
+                          <i className="fas fa-reply"></i>
+                          <span>Your Response ({new Date(r.reply_at).toLocaleDateString()}):</span>
+                        </span>
+                        <span className="text-[10px] text-[#4B6043]/80 uppercase font-mono">Store Owner</span>
+                      </div>
+                      <p className="text-xs text-[#2B2118] font-medium italic">
+                        "{r.reply}"
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="pt-1 space-y-2">
+                      <label className="block text-[11px] font-bold text-[#5C3A21]">
+                        Reply to Customer as Store Owner:
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder={`Say thank you or respond to ${r.customer_name || 'customer'}...`}
+                          value={replyText[r.id] || ''}
+                          onChange={(e) => setReplyText({ ...replyText, [r.id]: e.target.value })}
+                          className="flex-1 bg-[#E8D9B5]/40 text-[#2B2118] px-3 py-2 rounded-xl text-xs border border-[#D4C299] focus:outline-none focus:ring-1 focus:ring-[#C1440E]"
+                        />
+                        <button
+                          onClick={() => handleReplyReview(r.id)}
+                          disabled={replyingId === r.id || !replyText[r.id]?.trim()}
+                          className="bg-[#C1440E] hover:bg-[#A03408] disabled:opacity-50 text-[#F7F1E3] text-xs font-bold px-4 py-2 rounded-xl shadow transition shrink-0 flex items-center gap-1.5"
+                        >
+                          {replyingId === r.id ? (
+                            <i className="fas fa-spinner fa-spin"></i>
+                          ) : (
+                            <i className="fas fa-paper-plane text-[10px]"></i>
+                          )}
+                          <span>Post Reply</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── TAB 4: STORE SETTINGS ────────────────────────────────────── */}
       {activeTab === 'PROFILE' && (
         <form onSubmit={handleSaveProfile} className="bg-[#F7F1E3] rounded-3xl p-6 sm:p-8 border border-[#E8D9B5] shadow-lg space-y-6 max-w-3xl">
           <h2 className="font-display font-bold text-xl text-[#5C3A21]">Edit Business Profile</h2>
