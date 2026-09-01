@@ -214,11 +214,15 @@ export default function App() {
 
   // ── FETCH ORDERS HISTORY ───────────────────────────────────────
   const loadCustomerOrders = useCallback(async () => {
+    if (!userSession?.id) {
+      setCustomerOrders([]);
+      return;
+    }
     try {
       const list = await api.fetchOrders({
-        customerUserId: userSession?.id || undefined,
+        customerUserId: userSession.id,
       });
-      setCustomerOrders(list);
+      setCustomerOrders(list || []);
     } catch (err) {
       console.error('Failed to load orders:', err);
     }

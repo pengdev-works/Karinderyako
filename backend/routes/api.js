@@ -405,15 +405,21 @@ router.get('/orders', async (req, res) => {
   const { customerUserId, karinderyaId } = req.query;
 
   try {
+    const validKarinderyaId = Number(karinderyaId);
+    const validCustomerId = Number(customerUserId);
+
     let query = 'SELECT * FROM orders WHERE 1=1';
     const params = [];
 
-    if (karinderyaId) {
-      params.push(karinderyaId);
+    if (karinderyaId && !isNaN(validKarinderyaId) && validKarinderyaId > 0) {
+      params.push(validKarinderyaId);
       query += ` AND karinderya_id = $${params.length}`;
-    } else if (customerUserId) {
-      params.push(customerUserId);
+    } else if (customerUserId && !isNaN(validCustomerId) && validCustomerId > 0) {
+      params.push(validCustomerId);
       query += ` AND customer_user_id = $${params.length}`;
+    } else {
+      // If no valid ID is provided or user is not logged in / undefined, return empty array cleanly
+      return res.json([]);
     }
 
     query += ' ORDER BY created_at DESC LIMIT 50';
@@ -492,14 +498,15 @@ router.patch('/orders/:id/status', async (req, res) => {
  */
 router.get('/favorites', async (req, res) => {
   const { userId } = req.query;
-  if (!userId) return res.json([]);
+  const validUserId = Number(userId);
+  if (!userId || isNaN(validUserId) || validUserId <= 0) return res.json([]);
 
   try {
     const result = await pool.query(
       `SELECT k.* FROM favorites f 
        JOIN karinderyas k ON f.karinderya_id = k.id 
        WHERE f.user_id = $1`,
-      [userId]
+      [validUserId]
     );
     res.json(result.rows);
   } catch (err) {
@@ -581,10 +588,13 @@ router.post('/reviews', async (req, res) => {
  */
 router.get('/owner/restaurant', async (req, res) => {
   const { ownerUserId } = req.query;
-  if (!ownerUserId) return res.status(400).json({ error: 'Owner user ID required.' });
+  const validOwnerId = Number(ownerUserId);
+  if (!ownerUserId || isNaN(validOwnerId) || validOwnerId <= 0) {
+    return res.status(400).json({ error: 'Valid owner user ID required.' });
+  }
 
   try {
-    const kRes = await pool.query('SELECT * FROM karinderyas WHERE owner_user_id = $1 LIMIT 1', [ownerUserId]);
+    const kRes = await pool.query('SELECT * FROM karinderyas WHERE owner_user_id = $1 LIMIT 1', [validOwnerId]);
     if (kRes.rows.length === 0) return res.status(404).json({ error: 'No business registered under this account.' });
 
     res.json(kRes.rows[0]);

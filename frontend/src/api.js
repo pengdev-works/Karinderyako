@@ -64,7 +64,13 @@ export const placeOrder = (data) =>
   post('/orders', data);
 
 export const fetchOrders = (params = {}) => {
-  const qs = new URLSearchParams(params).toString();
+  const cleanParams = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== '' && v !== 'undefined' && v !== 'null') {
+      cleanParams.append(k, v);
+    }
+  });
+  const qs = cleanParams.toString();
   return get(`/orders${qs ? `?${qs}` : ''}`);
 };
 
@@ -75,8 +81,10 @@ export const updateOrderStatus = (orderId, status, userRole) =>
   patch(`/orders/${orderId}/status`, { status, userRole });
 
 // ── FAVORITES & REVIEWS ───────────────────────────────────────
-export const fetchFavorites = (userId) =>
-  get(`/favorites?userId=${userId}`);
+export const fetchFavorites = (userId) => {
+  if (!userId || userId === 'undefined') return Promise.resolve([]);
+  return get(`/favorites?userId=${userId}`);
+};
 
 export const toggleFavorite = (userId, karinderyaId) =>
   post('/favorites/toggle', { userId, karinderyaId });
@@ -85,8 +93,10 @@ export const submitReview = (data) =>
   post('/reviews', data);
 
 // ── RESTAURANT OWNER PORTAL ───────────────────────────────────
-export const fetchOwnerRestaurant = (ownerUserId) =>
-  get(`/owner/restaurant?ownerUserId=${ownerUserId}`);
+export const fetchOwnerRestaurant = (ownerUserId) => {
+  if (!ownerUserId || ownerUserId === 'undefined') return Promise.resolve(null);
+  return get(`/owner/restaurant?ownerUserId=${ownerUserId}`);
+};
 
 export const updateOwnerRestaurant = (data) =>
   put('/owner/restaurant', data);
