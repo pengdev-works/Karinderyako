@@ -12,19 +12,36 @@ const app  = express();
 const PORT = process.env.PORT || 5050;
 
 // ── CORS ──────────────────────────────────────────────────────
-// Allow requests from the frontend (Vercel URL or localhost)
-const allowedOrigins = [
+// Allow requests from frontend (Vercel production/preview and localhost)
+const envOrigins = (process.env.FRONTEND_URL || '')
+  .split(',')
+  .map(u => u.trim().replace(/\/$/, '')) // strip trailing slash
+  .filter(Boolean);
+
+const allowedStaticOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
-  process.env.FRONTEND_URL,
-].filter(Boolean);
+  'http://localhost:5173',
+  'http://localhost:4173',
+  'https://karinderyako.vercel.app',
+  ...envOrigins,
+];
+
+const isOriginAllowed = (origin) => {
+  if (!origin) return true; // allow curl, Postman, server-to-server, mobile
+  const cleanOrigin = origin.replace(/\/$/, '');
+  if (allowedStaticOrigins.includes(cleanOrigin)) return true;
+  // Allow all Vercel preview/production branch deployments
+  if (/^https:\/\/karinderyako.*\.vercel\.app$/.test(cleanOrigin)) return true;
+  return false;
+};
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, Postman, etc.)
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (isOriginAllowed(origin)) {
       callback(null, true);
     } else {
+      console.warn(`[CORS Blocked] Origin "${origin}" not in allowed list:`, allowedStaticOrigins);
       callback(new Error(`CORS: Origin "${origin}" not allowed`));
     }
   },
@@ -32,6 +49,9 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 }));
+
+// Explicit OPTIONS preflight handling
+app.options('*', cors());
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
