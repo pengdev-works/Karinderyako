@@ -21,12 +21,41 @@ export default function OwnerDashboard({ userSession, onOpenMarketplace }) {
   const [storeStatus, setStoreStatus] = useState('open');
   const [saveLoading, setSaveLoading] = useState(false);
 
-  // File upload helpers
-  const readFileAsDataURL = (file) =>
+  // File upload helpers with client-side compression
+  const compressImage = (file, maxWidth = 1000, maxHeight = 1000, quality = 0.85) =>
     new Promise((resolve, reject) => {
       if (!file) return resolve(null);
+      if (file.type === 'image/svg+xml' || file.type === 'image/gif') {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+        return;
+      }
       const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target.result);
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxWidth || height > maxHeight) {
+            if (width / height > maxWidth / maxHeight) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            } else {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = () => resolve(e.target.result);
+        img.src = e.target.result;
+      };
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
@@ -34,16 +63,16 @@ export default function OwnerDashboard({ userSession, onOpenMarketplace }) {
   const handleCoverPhotoChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { alert('Cover photo must be under 5 MB'); return; }
-    const dataUrl = await readFileAsDataURL(file);
+    if (file.size > 10 * 1024 * 1024) { alert('Cover photo must be under 10 MB'); return; }
+    const dataUrl = await compressImage(file, 1200, 800, 0.85);
     setStorePhoto(dataUrl);
   };
 
   const handleLogoChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { alert('Logo must be under 2 MB'); return; }
-    const dataUrl = await readFileAsDataURL(file);
+    if (file.size > 5 * 1024 * 1024) { alert('Logo must be under 5 MB'); return; }
+    const dataUrl = await compressImage(file, 400, 400, 0.88);
     setStoreLogo(dataUrl);
   };
 
@@ -54,7 +83,27 @@ export default function OwnerDashboard({ userSession, onOpenMarketplace }) {
   const [prodPrice, setProdPrice] = useState('');
   const [prodCategory, setProdCategory] = useState('Popular');
   const [prodPhoto, setProdPhoto] = useState('');
+  const [prodPhotoUploading, setProdPhotoUploading] = useState(false);
+  const [imageInputMode, setImageInputMode] = useState('UPLOAD'); // 'UPLOAD' | 'URL'
   const [prodLoading, setProdLoading] = useState(false);
+
+  const handleProductPhotoChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Photo must be under 10 MB');
+      return;
+    }
+    setProdPhotoUploading(true);
+    try {
+      const compressed = await compressImage(file, 900, 900, 0.85);
+      setProdPhoto(compressed);
+    } catch (err) {
+      alert('Failed to process image file');
+    } finally {
+      setProdPhotoUploading(false);
+    }
+  };
 
   // Reply State
   const [replyText, setReplyText] = useState({});
@@ -414,15 +463,15 @@ export default function OwnerDashboard({ userSession, onOpenMarketplace }) {
           {/* Add Product Modal */}
           {isAddProductOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-              <div className="bg-[#F7F1E3] rounded-3xl p-6 max-w-md w-full border border-[#E8D9B5] shadow-2xl space-y-4">
+              <div className="bg-[#F7F1E3] rounded-3xl p-6 max-w-md w-full border border-[#E8D9B5] shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
                 <div className="flex justify-between items-center border-b border-[#E8D9B5] pb-2">
                   <h3 className="font-display font-extrabold text-xl text-[#5C3A21]">Add New Menu Item</h3>
-                  <button onClick={() => setIsAddProductOpen(false)} className="text-[#5C3A21]">
-                    <i className="fas fa-times"></i>
+                  <button onClick={() => setIsAddProductOpen(false)} className="text-[#5C3A21] hover:text-[#C1440E] transition">
+                    <i className="fas fa-times text-lg"></i>
                   </button>
                 </div>
 
-                <form onSubmit={handleAddProduct} className="space-y-3 text-xs font-semibold text-[#5C3A21]">
+                <form onSubmit={handleAddProduct} className="space-y-3.5 text-xs font-semibold text-[#5C3A21]">
                   <div>
                     <label className="block mb-1">Dish Name *</label>
                     <input
@@ -431,7 +480,7 @@ export default function OwnerDashboard({ userSession, onOpenMarketplace }) {
                       placeholder="e.g. Chicken Silog"
                       value={prodName}
                       onChange={(e) => setProdName(e.target.value)}
-                      className="w-full bg-[#E8D9B5]/40 p-2.5 rounded-xl border border-[#D4C299]"
+                      className="w-full bg-[#E8D9B5]/40 p-2.5 rounded-xl border border-[#D4C299] focus:outline-none focus:ring-2 focus:ring-[#C1440E]"
                     />
                   </div>
 
@@ -439,10 +488,10 @@ export default function OwnerDashboard({ userSession, onOpenMarketplace }) {
                     <label className="block mb-1">Description</label>
                     <textarea
                       rows={2}
-                      placeholder="e.g. Crispy fried chicken served with sinangag rice..."
+                      placeholder="e.g. Crispy fried chicken served with sinangag rice and sunny-side-up egg..."
                       value={prodDesc}
                       onChange={(e) => setProdDesc(e.target.value)}
-                      className="w-full bg-[#E8D9B5]/40 p-2.5 rounded-xl border border-[#D4C299]"
+                      className="w-full bg-[#E8D9B5]/40 p-2.5 rounded-xl border border-[#D4C299] focus:outline-none focus:ring-2 focus:ring-[#C1440E]"
                     />
                   </div>
 
@@ -456,7 +505,7 @@ export default function OwnerDashboard({ userSession, onOpenMarketplace }) {
                         placeholder="99"
                         value={prodPrice}
                         onChange={(e) => setProdPrice(e.target.value)}
-                        className="w-full bg-[#E8D9B5]/40 p-2.5 rounded-xl border border-[#D4C299]"
+                        className="w-full bg-[#E8D9B5]/40 p-2.5 rounded-xl border border-[#D4C299] focus:outline-none focus:ring-2 focus:ring-[#C1440E]"
                       />
                     </div>
 
@@ -465,7 +514,7 @@ export default function OwnerDashboard({ userSession, onOpenMarketplace }) {
                       <select
                         value={prodCategory}
                         onChange={(e) => setProdCategory(e.target.value)}
-                        className="w-full bg-[#E8D9B5]/40 p-2.5 rounded-xl border border-[#D4C299]"
+                        className="w-full bg-[#E8D9B5]/40 p-2.5 rounded-xl border border-[#D4C299] focus:outline-none focus:ring-2 focus:ring-[#C1440E]"
                       >
                         <option value="Popular">Popular</option>
                         <option value="Silog Meals">Silog Meals</option>
@@ -479,23 +528,116 @@ export default function OwnerDashboard({ userSession, onOpenMarketplace }) {
                     </div>
                   </div>
 
+                  {/* ── PHOTO UPLOAD SECTION ── */}
                   <div>
-                    <label className="block mb-1">Photo Image URL</label>
-                    <input
-                      type="url"
-                      placeholder="https://images.unsplash.com/..."
-                      value={prodPhoto}
-                      onChange={(e) => setProdPhoto(e.target.value)}
-                      className="w-full bg-[#E8D9B5]/40 p-2.5 rounded-xl border border-[#D4C299]"
-                    />
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-bold text-[#5C3A21]">Dish Photo</label>
+                      <div className="flex bg-[#E8D9B5]/60 p-0.5 rounded-lg text-[10px] font-bold">
+                        <button
+                          type="button"
+                          onClick={() => setImageInputMode('UPLOAD')}
+                          className={`px-2.5 py-0.5 rounded-md transition ${imageInputMode === 'UPLOAD' ? 'bg-[#C1440E] text-[#F7F1E3] shadow-sm' : 'text-[#5C3A21]/70 hover:text-[#5C3A21]'}`}
+                        >
+                          <i className="fas fa-upload mr-1"></i> Upload File
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setImageInputMode('URL')}
+                          className={`px-2.5 py-0.5 rounded-md transition ${imageInputMode === 'URL' ? 'bg-[#C1440E] text-[#F7F1E3] shadow-sm' : 'text-[#5C3A21]/70 hover:text-[#5C3A21]'}`}
+                        >
+                          <i className="fas fa-link mr-1"></i> Image Link
+                        </button>
+                      </div>
+                    </div>
+
+                    {imageInputMode === 'UPLOAD' ? (
+                      <div className="space-y-2">
+                        <label
+                          htmlFor="dishPhotoUpload"
+                          className="flex flex-col items-center justify-center gap-2 w-full h-36 rounded-2xl border-2 border-dashed border-[#C1440E]/40 bg-[#E8D9B5]/30 cursor-pointer hover:bg-[#E8D9B5]/60 transition overflow-hidden relative group"
+                        >
+                          {prodPhoto ? (
+                            <>
+                              <img
+                                src={prodPhoto}
+                                alt="Dish preview"
+                                className="absolute inset-0 w-full h-full object-cover rounded-2xl"
+                              />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2 text-white text-xs font-bold">
+                                <i className="fas fa-camera"></i> Change Photo
+                              </div>
+                            </>
+                          ) : prodPhotoUploading ? (
+                            <div className="flex flex-col items-center gap-1.5 text-[#C1440E]">
+                              <i className="fas fa-spinner fa-spin text-2xl"></i>
+                              <span className="text-[11px] font-bold">Processing image...</span>
+                            </div>
+                          ) : (
+                            <div className="text-center p-3">
+                              <div className="w-10 h-10 rounded-full bg-[#E8D9B5] text-[#C1440E] flex items-center justify-center mx-auto mb-1.5 shadow-sm">
+                                <i className="fas fa-cloud-arrow-up text-lg"></i>
+                              </div>
+                              <p className="text-xs font-bold text-[#5C3A21]">Click or drag photo to upload</p>
+                              <p className="text-[10px] text-[#4A3B2C]/60 mt-0.5">PNG, JPG, WebP from phone or computer</p>
+                            </div>
+                          )}
+                        </label>
+                        <input
+                          id="dishPhotoUpload"
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleProductPhotoChange}
+                        />
+                        {prodPhoto && (
+                          <div className="flex items-center justify-between text-[11px] pt-0.5">
+                            <span className="text-emerald-700 font-bold flex items-center gap-1">
+                              <i className="fas fa-check-circle"></i> Photo attached
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setProdPhoto('')}
+                              className="text-red-600 hover:text-red-800 font-bold hover:underline"
+                            >
+                              <i className="fas fa-trash-alt mr-1"></i> Remove photo
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <input
+                          type="url"
+                          placeholder="https://images.unsplash.com/..."
+                          value={prodPhoto}
+                          onChange={(e) => setProdPhoto(e.target.value)}
+                          className="w-full bg-[#E8D9B5]/40 p-2.5 rounded-xl border border-[#D4C299] focus:outline-none focus:ring-2 focus:ring-[#C1440E]"
+                        />
+                        {prodPhoto && (
+                          <div className="w-full h-24 rounded-xl overflow-hidden border border-[#D4C299] relative">
+                            <img src={prodPhoto} alt="URL Preview" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <button
                     type="submit"
-                    disabled={prodLoading}
-                    className="w-full bg-[#C1440E] hover:bg-[#A03408] text-[#F7F1E3] font-display font-bold py-3 rounded-2xl shadow mt-2"
+                    disabled={prodLoading || prodPhotoUploading}
+                    className="w-full bg-[#C1440E] hover:bg-[#A03408] disabled:opacity-50 text-[#F7F1E3] font-display font-bold py-3 rounded-2xl shadow mt-3 transition flex items-center justify-center gap-2"
                   >
-                    {prodLoading ? 'Saving Dish...' : 'Save Menu Item'}
+                    {prodLoading ? (
+                      <>
+                        <i className="fas fa-spinner fa-spin"></i>
+                        <span>Saving Dish...</span>
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-plus-circle"></i>
+                        <span>Save Menu Item</span>
+                      </>
+                    )}
                   </button>
                 </form>
               </div>
